@@ -18,7 +18,6 @@ public class SearchLinks {
     private final static String URL_START = "https://www.uni-due.de/en/";
     // goalUrl
     private final static String URL_GOAL = "http://pinterest.com";
-    // max depth after which the program stops searching
     // timeout for the Jsoup method
     private final static int TIMEOUT_MILLIS = 600;
 
@@ -46,13 +45,13 @@ public class SearchLinks {
         this.tactic = tactic;
     }
 
-    //main - instantiate new SearchLinks object and run our search
+    //main - instantiate new SearchLinks object via user input and run our search
     public static void main(String[] args) {
-        System.out.println("******************");
+        System.out.println("******************************");
         System.out.println("Find shortest path between " + URL_START + " and " + URL_GOAL);
-        System.out.println("******************");
+        System.out.println("******************************");
 
-
+        //get tactic
         String tacticInput;
         Scanner sc = new Scanner(System.in);
         while(true) {
@@ -64,6 +63,8 @@ public class SearchLinks {
                 break;
             }
         }
+
+        //get depth
         String depthInput;
         while(true) {
             System.out.print("Choose max depth: ");
@@ -91,27 +92,32 @@ public class SearchLinks {
         //keep track of visited websites
         visitedWebsites = 0;
 
-        SearchNode node = null;
+        //starting node
+        SearchNode rootNode = new SearchNode(null, 0, start);
+        //final node
+        SearchNode targetNode = null;
 
         //choose search tactic depending on input
         System.out.print("Finding path with max depth of " + maxDepth + " using ");
         switch (tactic) {
             case 1: // bfs
                 System.out.println("breadth first search...");
-                node = bfs(new SearchNode(null, 0, start), maxDepth);
+                targetNode = bfs(rootNode, maxDepth);
                 break;
             case 2: // dfs
                 System.out.println("depth first search...");
-                node = dfs(new SearchNode(null, 0, start), maxDepth);
+                targetNode = dfs(rootNode, maxDepth);
                 break;
             case 3: // iterative deepening
                 //use dfs with ascending depth, starting at 1 up to max depth
                 System.out.println("iterative deepening...");
                 for (int i = 1; i <= maxDepth; i++) {
                     System.out.println("Max depth: " + i);
-                    node = dfs(new SearchNode(null, 0, start), i);
+                    targetNode = dfs(rootNode, i);
                     visited.clear();
                     System.out.println("");
+                    if (checkFound(targetNode))
+                        break;
                 }
                 break;
         }
@@ -120,16 +126,16 @@ public class SearchLinks {
         System.out.println("Searched " + visitedWebsites + " unique sites.");
 
         //if goal is found
-        if(node != null){
+        if (checkFound(targetNode)) {
             System.out.println(goal + " found!");
-            System.out.println("Depth: " + (node.getDepth()));
+            System.out.println("Depth: " + (targetNode.getDepth()));
             System.out.println("");
 
             //visualize path of nodes
             StringBuilder result = new StringBuilder(goal);
-            while (node != null) {
-                result.insert(0, node.getHref() + " --> ");
-                node = node.getParent();
+            while (targetNode != null) {
+                result.insert(0, targetNode.getHref() + " --> ");
+                targetNode = targetNode.getParent();
             }
             System.out.println(result.toString());
             System.out.println("");
@@ -165,23 +171,23 @@ public class SearchLinks {
                 System.out.println("Added " + nodeList.size() + " links (depth " + headNode.getDepth() + ")");
 
                 //for all found child nodes
-                for (SearchNode n : nodeList) {
+                for (SearchNode childNode : nodeList) {
 
                     //if goal url then return
-                    if (checkFound(n.getHref()))
-                        return n;
+                    if (checkFound(childNode))
+                        return childNode;
 
                     //if it has not been visited and depth is less than max depth then add to search
-                    if (!n.visited && n.getDepth() < depth) {
-                        searchList.add(n);
-                        n.visited = true;
+                    if (!childNode.visited && childNode.getDepth() < depth) {
+                        searchList.add(childNode);
+                        childNode.visited = true;
 
                     }
 
                 }
             }
         }
-        return null;
+        return node;
     }
 
     //breadth first search implementation using a queue
@@ -207,27 +213,27 @@ public class SearchLinks {
                 System.out.println("Added " + nodeList.size() + " links (depth " + headNode.getDepth() + ")");
 
                 //for all found child nodes
-                for (SearchNode n : nodeList) {
+                for (SearchNode childNode : nodeList) {
 
                     //if goal url then return
-                    if (checkFound(n.getHref()))
-                        return n;
+                    if (checkFound(childNode))
+                        return childNode;
 
                     //if it has not been visited and depth is less than max depth then add to search
-                    if (!n.visited && n.getDepth() < depth) {
-                        searchList.add(n);
-                        n.visited = true;
+                    if (!childNode.visited && childNode.getDepth() < depth) {
+                        searchList.add(childNode);
+                        childNode.visited = true;
 
                     }
 
                 }
             }
         }
-        return null;
+        return node;
     }
 
-    private boolean checkFound(String href) {
-        return href.contains(goalURL.getHost());
+    private boolean checkFound(SearchNode node) {
+        return node.getHref().contains(goalURL.getHost());
     }
 
     private List<SearchNode> getChildNodes(SearchNode node, int depth) {
