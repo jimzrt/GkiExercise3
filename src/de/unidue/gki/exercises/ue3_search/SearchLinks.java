@@ -26,7 +26,7 @@ public class SearchLinks {
 
     // which tactic to be used? 1 = breadth first, 2 = depth first,
     // 3 = iterative deepening
-    private final int TACTIC = 1;
+    private final int TACTIC = 3;
 
     // these are used to store the start URL and the goal URL
     private String start = null;
