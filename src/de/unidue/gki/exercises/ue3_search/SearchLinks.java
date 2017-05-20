@@ -17,36 +17,66 @@ public class SearchLinks {
     private final static String URL_START = "https://www.uni-due.de/en/";
     // goalUrl
     private final static String URL_GOAL = "http://pinterest.com";
-
-    // max depth after which the programm stops searching
-    private final int MAX_DEPTH = 5;
-
+    // max depth after which the program stops searching
+    private final static int MAX_DEPTH = 5;
     // timeout for the Jsoup method
-    private final int TIMEOUT_MILLIS = 600;
+    private final static int TIMEOUT_MILLIS = 600;
+
 
     // which tactic to be used? 1 = breadth first, 2 = depth first,
     // 3 = iterative deepening
-    private final int TACTIC = 3;
+    private final int maxDepth;
+    private final int tactic;
 
     // these are used to store the start URL and the goal URL
     private String start = null;
     private String goal = null;
+    private URL goalURL = null;
 
     // HashSet of all visited links
     private Set<String> visited = new HashSet<>();
     private int visitedWebsites = 0;
-    private URL goalURL = null;
 
 
     //Constructor to set start and goal
-    private SearchLinks(final String startHref, final String goalHref) {
+    private SearchLinks(final String startHref, final String goalHref, int maxDepth, int tactic) {
         this.start = startHref;
         this.goal = goalHref;
+        this.maxDepth = maxDepth;
+        this.tactic = tactic;
     }
 
     //main - instantiate new SearchLinks object and run our search
     public static void main(String[] args) {
-        new SearchLinks(URL_START, URL_GOAL).start();
+        System.out.println("******************");
+        System.out.println("Find shortest path between " + URL_START + " and " + URL_GOAL);
+        System.out.println("******************");
+
+
+        String tacticInput;
+        Scanner sc = new Scanner(System.in);
+        while(true) {
+            System.out.print("Choose tactic (1=breadth first search, 2=depth first search, 3=iterative deepening): ");
+            tacticInput = sc.nextLine().trim();
+            if(!tacticInput.matches("[1-3]")){
+                System.out.println("Wrong input! Only 1,2,3 allowed.\n");
+            } else {
+                break;
+            }
+        }
+        String depthInput;
+        while(true) {
+            System.out.print("Choose max depth: ");
+            depthInput = sc.nextLine().trim();
+            if(!depthInput.matches("[1-9]+")){
+                System.out.println("Wrong input! Only numbers allowed.\n");
+            } else {
+                System.out.println("\n");
+                break;
+            }
+        }
+
+        new SearchLinks(URL_START, URL_GOAL,Integer.parseInt(depthInput),Integer.parseInt(tacticInput)).start();
     }
 
     private void start() {
@@ -64,16 +94,21 @@ public class SearchLinks {
 
         //choose search tactic depending on
         SearchNode node = null;
-        switch (TACTIC) {
+
+        System.out.print("Finding path with max depth of " + maxDepth + " using ");
+        switch (tactic) {
             case 1: // bfs
-                node = bfs(new SearchNode(null, 0, start), MAX_DEPTH);
+                System.out.println("breadth first search...");
+                node = bfs(new SearchNode(null, 0, start), maxDepth);
                 break;
             case 2: // dfs
-                node = dfs(new SearchNode(null, 0, start), MAX_DEPTH);
+                System.out.println("depth first search...");
+                node = dfs(new SearchNode(null, 0, start), maxDepth);
                 break;
             case 3: // iterative deepening
                 //use dfs with ascending depth, starting at 1 up to max depth
-                for (int i = 1; i <= MAX_DEPTH; i++) {
+                System.out.println("iterative deepening...");
+                for (int i = 1; i <= maxDepth; i++) {
                     System.out.println("Max depth: " + i);
                     node = dfs(new SearchNode(null, 0, start), i);
                     visited.clear();
