@@ -68,7 +68,7 @@ public class SearchLinks {
         while(true) {
             System.out.print("Choose max depth: ");
             depthInput = sc.nextLine().trim();
-            if(!depthInput.matches("[1-9]+")){
+            if(!depthInput.matches("[0-9]+")){
                 System.out.println("Wrong input! Only numbers allowed.\n");
             } else {
                 System.out.println("\n");
