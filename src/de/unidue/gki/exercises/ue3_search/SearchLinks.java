@@ -91,10 +91,9 @@ public class SearchLinks {
         //keep track of visited websites
         visitedWebsites = 0;
 
-
-        //choose search tactic depending on
         SearchNode node = null;
 
+        //choose search tactic depending on input
         System.out.print("Finding path with max depth of " + maxDepth + " using ");
         switch (tactic) {
             case 1: // bfs
