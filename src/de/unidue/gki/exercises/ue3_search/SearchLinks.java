@@ -13,12 +13,12 @@ import java.util.regex.Pattern;
 
 public class SearchLinks {
 
+    // global parameters
     // startUrl
     private final static String URL_START = "https://www.uni-due.de/en/";
     // goalUrl
     private final static String URL_GOAL = "http://pinterest.com";
     // max depth after which the program stops searching
-    private final static int MAX_DEPTH = 5;
     // timeout for the Jsoup method
     private final static int TIMEOUT_MILLIS = 600;
 
