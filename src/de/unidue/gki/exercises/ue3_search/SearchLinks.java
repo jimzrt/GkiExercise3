@@ -13,36 +13,34 @@ import java.util.regex.Pattern;
 
 public class SearchLinks {
 
-    // global parameters
+    // global values
     // startUrl
     private final static String URL_START = "https://www.uni-due.de/en/";
     // goalUrl
     private final static String URL_GOAL = "http://pinterest.com";
-    // timeout for the Jsoup method
+    // timeout for connecting to websites
     private final static int TIMEOUT_MILLIS = 600;
-
-
-    // which tactic to be used? 1 = breadth first, 2 = depth first,
-    // 3 = iterative deepening
+    // which tactic to be used?
+    private final Tactic tactic;
+    //which mode to be used?
+    private final Mode mode;
+    //how deep do we go?
     private final int maxDepth;
-    private final int tactic;
-
     // these are used to store the start URL and the goal URL
     private String start = null;
     private String goal = null;
     private URL goalURL = null;
-
     // HashSet of all visited links
     private Set<String> visited = new HashSet<>();
     private int visitedWebsites = 0;
 
-
     //Constructor to set start and goal
-    private SearchLinks(final String startHref, final String goalHref, int maxDepth, int tactic) {
+    private SearchLinks(final String startHref, final String goalHref, int maxDepth, Tactic tactic, Mode mode) {
         this.start = startHref;
         this.goal = goalHref;
         this.maxDepth = maxDepth;
         this.tactic = tactic;
+        this.mode = mode;
     }
 
     //main - instantiate new SearchLinks object via user input and run our search
@@ -63,6 +61,18 @@ public class SearchLinks {
                 break;
             }
         }
+        Tactic tactic = null;
+        switch (Integer.parseInt(tacticInput)) {
+            case 1:
+                tactic = Tactic.BFS;
+                break;
+            case 2:
+                tactic = Tactic.DFS;
+                break;
+            case 3:
+                tactic = Tactic.ITERATIVE_DEEPENING;
+                break;
+        }
 
         //get depth
         String depthInput;
@@ -72,12 +82,35 @@ public class SearchLinks {
             if (!depthInput.matches("[1-9]+[0-9]*")) {
                 System.out.println("Wrong input! Only numbers allowed.\n");
             } else {
-                System.out.println("\n");
                 break;
             }
         }
 
-        new SearchLinks(URL_START, URL_GOAL,Integer.parseInt(depthInput),Integer.parseInt(tacticInput)).start();
+        //get mode
+        String modeInput;
+        while (true) {
+            System.out.println("Choose mode (1=full path, 2=host only): ");
+            System.out.println("full path = follow every path on host (at most once)");
+            System.out.println("host only = visit each host at most once [faster]");
+            modeInput = sc.nextLine().trim();
+            if (!modeInput.matches("[1-2]")) {
+                System.out.println("Wrong input! Only 1,2 allowed.\n");
+            } else {
+                break;
+            }
+        }
+        Mode mode = null;
+        switch (Integer.parseInt(modeInput)) {
+            case 1:
+                mode = Mode.FULL_PATH;
+                break;
+            case 2:
+                mode = Mode.HOST_ONLY;
+                break;
+
+        }
+
+        new SearchLinks(URL_START, URL_GOAL, Integer.parseInt(depthInput), tactic, mode).start();
     }
 
     private void start() {
@@ -100,15 +133,15 @@ public class SearchLinks {
         //choose search tactic depending on input
         System.out.print("Finding path with max depth of " + maxDepth + " using ");
         switch (tactic) {
-            case 1: // bfs
+            case BFS: // bfs
                 System.out.println("breadth first search...");
                 targetNode = bfs(rootNode, maxDepth);
                 break;
-            case 2: // dfs
+            case DFS: // dfs
                 System.out.println("depth first search...");
                 targetNode = dfs(rootNode, maxDepth);
                 break;
-            case 3: // iterative deepening
+            case ITERATIVE_DEEPENING: // iterative deepening
                 //use dfs with ascending depth, starting at 1 up to max depth
                 System.out.println("iterative deepening...");
                 for (int i = 1; i <= maxDepth; i++) {
@@ -145,6 +178,74 @@ public class SearchLinks {
             System.out.println("No path found!");
         }
 
+    }
+
+    private List<SearchNode> getChildNodes(SearchNode node, int depth) {
+        visitedWebsites++;
+        List<SearchNode> childNodes = new ArrayList<>();
+
+
+        //parse node URL via JSoup
+        Document doc;
+        try {
+            doc = Jsoup.connect(node.getHref()).timeout(TIMEOUT_MILLIS).get();
+        } catch (IOException e) {
+            System.out.println("Could not connect to " + node.getHref());
+            return childNodes;
+        }
+
+        //find all links in node
+        if (doc != null) {
+            for (Element link : doc.select("a")) {
+                String href = link.absUrl("href").trim();
+                if (href.startsWith("http://") || href.startsWith("https://")) {
+
+                    //create URL object from link
+                    URL url;
+                    try {
+                        url = new URL(href);
+                    } catch (MalformedURLException e) {
+                        System.out.println("error at parsing url " + href);
+                        break;
+                    }
+
+                    //use regex to filter root domain like facebook.com in de-de.facebook.com
+                    Pattern p = Pattern.compile(".*?([^.]+\\.[^.]+)");
+                    Matcher m = null;
+                    if (mode == Mode.FULL_PATH) {
+                        m = p.matcher(url.getHost() + url.getPath());
+                    } else if (mode == Mode.HOST_ONLY) {
+                        m = p.matcher(url.getHost());
+                    }
+
+
+                    //if url is valid and has not been visited
+                    if (m.matches() && !visited.contains(m.group(1))) {
+                        //mark as visited
+                        visited.add(m.group(1));
+
+                        //add to child nodes list
+                        if (mode == Mode.FULL_PATH) {
+                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost() + url.getPath()));
+                        } else if (mode == Mode.HOST_ONLY) {
+                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost()));
+                        }
+
+
+                    }
+
+
+                }
+            }
+        }
+        return childNodes;
+    }
+
+    //All possible tactics as type
+    public enum Tactic {
+        BFS,
+        DFS,
+        ITERATIVE_DEEPENING
     }
 
 
@@ -236,54 +337,14 @@ public class SearchLinks {
         return node.getHref().contains(goalURL.getHost());
     }
 
-    private List<SearchNode> getChildNodes(SearchNode node, int depth) {
-        visitedWebsites++;
-        List<SearchNode> childNodes = new ArrayList<>();
-
-
-        //parse node URL via JSoup
-        Document doc;
-        try {
-            doc = Jsoup.connect(node.getHref()).timeout(TIMEOUT_MILLIS).get();
-        } catch (IOException e) {
-            System.out.println("Could not connect to " + node.getHref());
-            return childNodes;
-        }
-
-        //find all links in node
-        if (doc != null) {
-            for (Element link : doc.select("a")) {
-                String href = link.absUrl("href").trim();
-                if (href.startsWith("http://") || href.startsWith("https://")) {
-
-                    //create URL object from link
-                    URL url;
-                    try {
-                        url = new URL(href);
-                    } catch (MalformedURLException e) {
-                        System.out.println("error at parsing url " + href);
-                        break;
-                    }
-
-                    //use regex to filter root domain like facebook.com in de-de.facebook.com
-                    Pattern p = Pattern.compile(".*?([^.]+\\.[^.]+)");
-                    Matcher m = p.matcher(url.getHost());
-
-                    //if url is valid and has not been visited
-                    if (m.matches() && !visited.contains(m.group(1))) {
-                        //mark as visited
-                        visited.add(m.group(1));
-
-                        //add to child nodes list
-                        childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost()));
-
-                    }
-
-
-                }
-            }
-        }
-        return childNodes;
+    //All possible modes as type
+    //FULL_PATH = follow every path on host at most once
+    //          -> e.g. https://www.uni-due.de/studium, https://www.uni-due.de/forschung, https://www.uni-due.de/international
+    //HOST_ONLY = visit each host at most once
+    //          -> if https://www.uni-due.de/studium has been visited, don't follow any link that leads to https://www.uni-due.de/.....
+    public enum Mode {
+        FULL_PATH,
+        HOST_ONLY
     }
 
 
