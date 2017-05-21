@@ -55,7 +55,7 @@ public class SearchLinks {
     private Set<String> visited = new HashSet<>();
     private int visitedWebsites = 0;
 
-    //Constructor to set start and goal
+    //Constructor to set all parameters
     private SearchLinks(final String startHref, final String goalHref, int maxDepth, Tactic tactic, Mode mode) {
         this.start = startHref;
         this.goal = goalHref;
@@ -128,7 +128,6 @@ public class SearchLinks {
             case 2:
                 mode = Mode.HOST_ONLY;
                 break;
-
         }
 
         new SearchLinks(URL_START, URL_GOAL, Integer.parseInt(depthInput), tactic, mode).start();
