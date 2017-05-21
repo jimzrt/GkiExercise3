@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 public class SearchLinks {
 
+    //-----------
     // global values
     // startUrl
     private final static String URL_START = "https://www.uni-due.de/en/";
@@ -20,6 +21,26 @@ public class SearchLinks {
     private final static String URL_GOAL = "http://pinterest.com";
     // timeout for connecting to websites
     private final static int TIMEOUT_MILLIS = 600;
+
+    //All possible tactics as type
+    public enum Tactic {
+        BFS,
+        DFS,
+        ITERATIVE_DEEPENING
+    }
+
+    //All possible modes as type
+    //FULL_PATH = follow every path on host at most once
+    //          -> e.g. https://www.uni-due.de/studium, https://www.uni-due.de/forschung, https://www.uni-due.de/international
+    //HOST_ONLY = visit each host at most once
+    //          -> if https://www.uni-due.de/studium has been visited, don't follow any link that leads to https://www.uni-due.de/.....
+    public enum Mode {
+        FULL_PATH,
+        HOST_ONLY
+    }
+
+    //-----------
+
     // which tactic to be used?
     private final Tactic tactic;
     //which mode to be used?
@@ -180,74 +201,6 @@ public class SearchLinks {
 
     }
 
-    private List<SearchNode> getChildNodes(SearchNode node, int depth) {
-        visitedWebsites++;
-        List<SearchNode> childNodes = new ArrayList<>();
-
-
-        //parse node URL via JSoup
-        Document doc;
-        try {
-            doc = Jsoup.connect(node.getHref()).timeout(TIMEOUT_MILLIS).get();
-        } catch (IOException e) {
-            System.out.println("Could not connect to " + node.getHref());
-            return childNodes;
-        }
-
-        //find all links in node
-        if (doc != null) {
-            for (Element link : doc.select("a")) {
-                String href = link.absUrl("href").trim();
-                if (href.startsWith("http://") || href.startsWith("https://")) {
-
-                    //create URL object from link
-                    URL url;
-                    try {
-                        url = new URL(href);
-                    } catch (MalformedURLException e) {
-                        System.out.println("error at parsing url " + href);
-                        break;
-                    }
-
-                    //use regex to filter root domain like facebook.com in de-de.facebook.com
-                    Pattern p = Pattern.compile(".*?([^.]+\\.[^.]+)");
-                    Matcher m = null;
-                    if (mode == Mode.FULL_PATH) {
-                        m = p.matcher(url.getHost() + url.getPath());
-                    } else if (mode == Mode.HOST_ONLY) {
-                        m = p.matcher(url.getHost());
-                    }
-
-
-                    //if url is valid and has not been visited
-                    if (m.matches() && !visited.contains(m.group(1))) {
-                        //mark as visited
-                        visited.add(m.group(1));
-
-                        //add to child nodes list
-                        if (mode == Mode.FULL_PATH) {
-                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost() + url.getPath()));
-                        } else if (mode == Mode.HOST_ONLY) {
-                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost()));
-                        }
-
-
-                    }
-
-
-                }
-            }
-        }
-        return childNodes;
-    }
-
-    //All possible tactics as type
-    public enum Tactic {
-        BFS,
-        DFS,
-        ITERATIVE_DEEPENING
-    }
-
 
     //iterative depth first search implementation using a stack
     private SearchNode dfs(SearchNode node, int depth) {
@@ -337,14 +290,65 @@ public class SearchLinks {
         return node.getHref().contains(goalURL.getHost());
     }
 
-    //All possible modes as type
-    //FULL_PATH = follow every path on host at most once
-    //          -> e.g. https://www.uni-due.de/studium, https://www.uni-due.de/forschung, https://www.uni-due.de/international
-    //HOST_ONLY = visit each host at most once
-    //          -> if https://www.uni-due.de/studium has been visited, don't follow any link that leads to https://www.uni-due.de/.....
-    public enum Mode {
-        FULL_PATH,
-        HOST_ONLY
+    private List<SearchNode> getChildNodes(SearchNode node, int depth) {
+        visitedWebsites++;
+        List<SearchNode> childNodes = new ArrayList<>();
+
+
+        //parse node URL via JSoup
+        Document doc;
+        try {
+            doc = Jsoup.connect(node.getHref()).timeout(TIMEOUT_MILLIS).get();
+        } catch (IOException e) {
+            System.out.println("Could not connect to " + node.getHref());
+            return childNodes;
+        }
+
+        //find all links in node
+        if (doc != null) {
+            for (Element link : doc.select("a")) {
+                String href = link.absUrl("href").trim();
+                if (href.startsWith("http://") || href.startsWith("https://")) {
+
+                    //create URL object from link
+                    URL url;
+                    try {
+                        url = new URL(href);
+                    } catch (MalformedURLException e) {
+                        System.out.println("error at parsing url " + href);
+                        break;
+                    }
+
+                    //use regex to filter root domain like facebook.com in de-de.facebook.com
+                    Pattern p = Pattern.compile(".*?([^.]+\\.[^.]+)");
+                    Matcher m = null;
+                    if (mode == Mode.FULL_PATH) {
+                        m = p.matcher(url.getHost() + url.getPath());
+                    } else if (mode == Mode.HOST_ONLY) {
+                        m = p.matcher(url.getHost());
+                    }
+
+
+                    //if url is valid and has not been visited
+                    if (m.matches() && !visited.contains(m.group(1))) {
+                        //mark as visited
+                        visited.add(m.group(1));
+
+                        //add to child nodes list
+                        if (mode == Mode.FULL_PATH) {
+                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost() + url.getPath()));
+                        } else if (mode == Mode.HOST_ONLY) {
+                            childNodes.add(new SearchNode(node, depth, url.getProtocol() + "://" + url.getHost()));
+                        }
+
+
+                    }
+
+
+                }
+            }
+        }
+        return childNodes;
     }
 
 
