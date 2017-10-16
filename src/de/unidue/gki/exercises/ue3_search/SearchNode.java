@@ -7,6 +7,9 @@ public class SearchNode {
 	private String href;
 	public boolean visited;
 
+
+	/* könnte an dieser Stelle verbessert werden, nein spaß */
+	
 	public SearchNode(SearchNode parent, int depth, String href) {
 		super();
 		this.parent = parent;
